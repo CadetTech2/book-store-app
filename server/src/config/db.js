@@ -11,7 +11,7 @@ const config = {
   port: env.db.port,
   options: {
     encrypt: true, // Essential for Azure SQL Database
-    trustServerCertificate: true, // For local dev. Set to false in prod with valid certificates.
+    trustServerCertificate: env.isDev, // For local dev. Set to false in prod with valid certificates.
   },
   pool: {
     max: 10,

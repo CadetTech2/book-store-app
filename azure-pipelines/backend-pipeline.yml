@@ -1,51 +1,102 @@
-name: Backend CI/CD
-
-on:
-  push:
-    branches:
+# Backend CI/CD Pipeline
+# Triggers on changes to the server/ folder on main or develop branches
+# Note: Adapted trigger path from backend/** to server/** to match repository structure.
+trigger:
+  branches:
+    include:
       - main
-    paths:
-      - 'server/**'
-      - 'Dockerfile.server'
-      - '.github/workflows/backend-deploy.yml'
-  pull_request:
-    branches:
-      - main
-    paths:
-      - 'server/**'
-      - 'Dockerfile.server'
-      - '.github/workflows/backend-deploy.yml'
+      - develop
+  paths:
+    include:
+      - server/**
+      - Dockerfile.server
+      - azure-pipelines/backend-pipeline.yml
 
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    name: Build and Deploy Backend
+variables:
+  - group: taskapp-variables
+  - name: imageTag
+    value: $(Build.BuildId)
 
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+stages:
+  # ── Stage 1: Build & Push Docker Image ──────────────────
+  - stage: Build
+    displayName: 'Build and Push Docker Image'
+    jobs:
+      - job: BuildJob
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          # Step 1: Check out code
+          - checkout: self
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+          # Step 2: Login to Azure Container Registry
+          - task: Docker@2
+            displayName: 'Login to ACR'
+            inputs:
+              command: login
+              containerRegistry: acr-service-connection
 
-      - name: Log in to Azure Container Registry
-        uses: azure/docker-login@v1
-        with:
-          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
-          username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_PASSWORD }}
+          # Step 3: Build Docker image with the Build ID as the tag
+          # Note: Adapted dockerfile path and buildContext to match repository root structure.
+          - task: Docker@2
+            displayName: 'Build Backend Image'
+            inputs:
+              command: build
+              repository: $(DOCKER_REGISTRY)/$(BACKEND_IMAGE_NAME)
+              dockerfile: Dockerfile.server
+              buildContext: $(Build.SourcesDirectory)
+              tags: |
+                $(imageTag)
+                latest
 
-      - name: Build and Push Docker Image
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: ./Dockerfile.server
-          push: true
-          tags: ${{ secrets.ACR_LOGIN_SERVER }}/bookvault-backend:latest
+          # Step 4: Push image to ACR
+          - task: Docker@2
+            displayName: 'Push Backend Image to ACR'
+            inputs:
+              command: push
+              repository: $(DOCKER_REGISTRY)/$(BACKEND_IMAGE_NAME)
+              tags: |
+                $(imageTag)
+                latest
 
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: 'app-taskapp-backend-asim'
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          images: '${{ secrets.ACR_LOGIN_SERVER }}/bookvault-backend:latest'
+  # ── Stage 2: Deploy to Dev (from develop branch) ────────
+  - stage: DeployDev
+    displayName: 'Deploy to Development'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
+    jobs:
+      - deployment: DeployDevJob
+        environment: 'development'
+        pool:
+          vmImage: 'ubuntu-latest'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebAppContainer@1
+                  displayName: 'Deploy Backend to Dev App Service'
+                  inputs:
+                    azureSubscription: $(AZURE_SUBSCRIPTION)
+                    appName: $(BACKEND_APP_NAME)-dev
+                    containers: $(DOCKER_REGISTRY)/$(BACKEND_IMAGE_NAME):$(imageTag)
+
+  # ── Stage 3: Deploy to Prod (from main branch) ──────────
+  - stage: DeployProd
+    displayName: 'Deploy to Production'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: DeployProdJob
+        environment: 'production'
+        pool:
+          vmImage: 'ubuntu-latest'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebAppContainer@1
+                  displayName: 'Deploy Backend to Prod App Service'
+                  inputs:
+                    azureSubscription: $(AZURE_SUBSCRIPTION)
+                    appName: $(BACKEND_APP_NAME)
+                    containers: $(DOCKER_REGISTRY)/$(BACKEND_IMAGE_NAME):$(imageTag)

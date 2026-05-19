@@ -15,3 +15,15 @@ BEGIN
         updated_at DATETIME2 NOT NULL DEFAULT GETDATE()
     );
 END
+
+-- Ensure new columns are added if they are missing from a pre-existing table
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('tasks') AND name = 'priority')
+BEGIN
+    ALTER TABLE tasks ADD priority NVARCHAR(50) NOT NULL DEFAULT 'medium';
+END
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('tasks') AND name = 'due_date')
+BEGIN
+    ALTER TABLE tasks ADD due_date DATE DEFAULT NULL;
+END
+
