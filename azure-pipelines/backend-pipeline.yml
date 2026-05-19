@@ -34,7 +34,7 @@ stages:
             displayName: 'Login to ACR'
             inputs:
               command: login
-              containerRegistry: acr-service-connection
+              containerRegistry: asimabidconnection
 
           # Step 3: Build Docker image with the Build ID as the tag
           # Note: Adapted dockerfile path and buildContext to match repository root structure.
@@ -76,7 +76,7 @@ stages:
                 - task: AzureWebAppContainer@1
                   displayName: 'Deploy Backend to Dev App Service'
                   inputs:
-                    azureSubscription: $(AZURE_SUBSCRIPTION)
+                    azureSubscription: asimservice
                     appName: $(BACKEND_APP_NAME)-dev
                     containers: $(DOCKER_REGISTRY)/$(BACKEND_IMAGE_NAME):$(imageTag)
 
@@ -97,6 +97,6 @@ stages:
                 - task: AzureWebAppContainer@1
                   displayName: 'Deploy Backend to Prod App Service'
                   inputs:
-                    azureSubscription: $(AZURE_SUBSCRIPTION)
+                    azureSubscription: asimservice
                     appName: $(BACKEND_APP_NAME)
                     containers: $(DOCKER_REGISTRY)/$(BACKEND_IMAGE_NAME):$(imageTag)
