@@ -14,8 +14,8 @@ const app = express();
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({
-  origin: env.isDev ? '*' : process.env.CLIENT_URL,
-  credentials: true,
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 }));
 app.use(compression());
 app.use(morgan(env.isDev ? 'dev' : 'combined'));
