@@ -1,13 +1,17 @@
-CREATE DATABASE IF NOT EXISTS taskdb;
-USE taskdb;
+-- T-SQL Schema for Azure SQL Database / Microsoft SQL Server
+-- Note: In Azure SQL, database is pre-created and USE statement is not supported.
+-- Run this script inside your target database.
 
-CREATE TABLE IF NOT EXISTS tasks (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    description TEXT,
-    status VARCHAR(50) NOT NULL DEFAULT 'pending',
-    priority VARCHAR(50) NOT NULL DEFAULT 'medium',
-    due_date DATE DEFAULT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'tasks' AND type = 'U')
+BEGIN
+    CREATE TABLE tasks (
+        id INT IDENTITY(1,1) PRIMARY KEY,
+        title NVARCHAR(255) NOT NULL,
+        description NVARCHAR(MAX),
+        status NVARCHAR(50) NOT NULL DEFAULT 'pending',
+        priority NVARCHAR(50) NOT NULL DEFAULT 'medium',
+        due_date DATE DEFAULT NULL,
+        created_at DATETIME2 NOT NULL DEFAULT GETDATE(),
+        updated_at DATETIME2 NOT NULL DEFAULT GETDATE()
+    );
+END

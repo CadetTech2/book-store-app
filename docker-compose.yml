@@ -1,26 +1,17 @@
 version: '3.8'
 
 services:
-  mysql:
-    image: mysql:8.0
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: task-db
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-taskdb}
-      MYSQL_USER: ${MYSQL_USER:-task_user}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-task_pass}
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${DB_PASSWORD:-rootpassword123!}
     ports:
-      - '3306:3306'
+      - '1433:1433'
     volumes:
-      - mysql_data:/var/lib/mysql
-      - ./server/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
-      - ./server/database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
-    healthcheck:
-      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - mssql_data:/var/opt/mssql
 
   server:
     build:
@@ -29,16 +20,15 @@ services:
     container_name: task-server
     restart: unless-stopped
     depends_on:
-      mysql:
-        condition: service_healthy
+      - sqlserver
     environment:
       NODE_ENV: production
       PORT: 5000
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: ${MYSQL_USER:-task_user}
-      DB_PASSWORD: ${MYSQL_PASSWORD:-task_pass}
-      DB_NAME: ${MYSQL_DATABASE:-taskdb}
+      DB_HOST: sqlserver
+      DB_PORT: 1433
+      DB_USER: sa
+      DB_PASSWORD: ${DB_PASSWORD:-rootpassword123!}
+      DB_NAME: ${DB_NAME:-taskdb}
       JWT_SECRET: ${JWT_SECRET:-change-this-in-production}
       JWT_EXPIRES_IN: 7d
       UPLOAD_DIR: uploads
@@ -59,5 +49,5 @@ services:
       - '3000:80'
 
 volumes:
-  mysql_data:
+  mssql_data:
   uploads_data:
