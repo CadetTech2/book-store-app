@@ -8,13 +8,7 @@ const path = require('path');
 const env = require('./config/env');
 const errorHandler = require('./middleware/errorHandler');
 
-const authRoutes = require('./routes/auth');
-const bookRoutes = require('./routes/books');
-const categoryRoutes = require('./routes/categories');
-const cartRoutes = require('./routes/cart');
-const orderRoutes = require('./routes/orders');
-const userRoutes = require('./routes/users');
-const dashboardRoutes = require('./routes/dashboard');
+const taskRoutes = require('./routes/tasks');
 
 const app = express();
 
@@ -37,16 +31,10 @@ app.use('/api', limiter);
 
 app.use('/uploads', express.static(path.resolve(env.upload.dir)));
 
-app.use('/api/auth', authRoutes);
-app.use('/api/books', bookRoutes);
-app.use('/api/categories', categoryRoutes);
-app.use('/api/cart', cartRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/tasks', taskRoutes);
 
 app.get('/api/health', (_req, res) => {
-  res.json({ success: true, message: 'BookVault API is running' });
+  res.json({ success: true, message: 'Task Manager API is running' });
 });
 
 app.use((_req, res) => {
